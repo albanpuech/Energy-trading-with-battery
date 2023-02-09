@@ -1,0 +1,7 @@
+model ampl.mod;
+data ampl.dat;
+option solver cplex;
+solve;
+for {i in H}{
+    printf(" %d", x[i]);
+}
