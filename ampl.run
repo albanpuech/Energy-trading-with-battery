@@ -1,7 +1,12 @@
 model ampl.mod;
 data ampl.dat;
-option solver cplex;
+option solver gurobi;
 solve;
-for {i in H}{
-    printf(" %d", x[i]);
-}
+display NEC;
+display SOC;
+display is_discharging;
+display is_charging;
+display is_charging_or_discharging;
+display x;
+display min_SOC;
+display max_SOC;

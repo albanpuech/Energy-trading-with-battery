@@ -13,9 +13,9 @@ param EC_init >= 0, <= NEC default 0;
 
 # ----------- constants -------------
 # eps 
-param eps = 0.00000001;
+param eps := 0.00000001;
 # big M to compute is_charging and is_discharging
-param M = NEC;
+param M := NEC;
 
 
 
@@ -24,13 +24,13 @@ param M = NEC;
 # incremental - number of intervals
 param inc <= 100, >= 0, default 1;
 # number of intervals
-param Nint = 100/inc;
+param Nint := 100/inc;
 # interval indices 
 set I ordered := {0..Nint};
 # cut points
-param S{i in I} = i*inc;
+param S{i in I} := i*inc;
 # max negative change in energy capacity (discharge)
-param G_d{I} >= -NEC, <= 0 default NEC/2;
+param G_d{I} >= -NEC, <= 0 default -NEC/2;
 # max positive change in energy capacity (charge)
 param G_c{I} >=0, <= NEC default NEC/2;
 
@@ -48,9 +48,9 @@ param vgc{H} >= 0 default 0;
 
 # ----------- Availability Constraints -------------
 # minimum SOC required 
-param min_soc{H} >= 0, <= 1 default 0;
+param min_SOC{H} >= 0, <= 1 default 0;
 # max SOC required 
-param max_soc{H} >= 0, <= 1 default 1;
+param max_SOC{H} >= 0, <= 1 default 1;
 
 # ----------- UNUSED -------------
 # current cycle count 
@@ -65,7 +65,7 @@ param fc >=0 default 0;
 # energy "in" per hour
 var x{H} >= -NEC, <= NEC;
 # state of charge
-var soc{H} >= 0, <=1;
+var SOC{H} >= 0, <=1;
 # absolute value of the energy "in" per hour 
 var abs_x{H} >=0, <= NEC;
 
@@ -96,11 +96,11 @@ var interval_end_w{I,H} >= 0, <= 1;
 #------------------- Auxiliary variables ----------------
 # compute SOC[i]
 subject to compute_soc {i in H}:
-    SOC[i] = sum{t in 0..i} x[t]
+    SOC[i] = sum{t in 0..i} x[t] / NEC;
 ;
 
 # get the absolute value of x[i]
-subject to abs_x {i in H}:
+subject to abs_x_creation {i in H}:
     abs_x[i] = is_charging[i] * x[i] - is_discharging[i] * x[i]
 ;
 
@@ -132,13 +132,13 @@ subject to availability_constraint {i in H}:
 
 # ------------------- Find discretization parameters of SOC ------------
 subject to find_weights_for_each_interval {i in H} : 
-    sum{k in 1..Nint} (interval_start_w[k][i]*S[k-1]+ interval_end_w[k][i]*S[k]) == soc[i];
+    sum{k in 1..Nint} (interval_start_w[k,i]*S[k-1]+ interval_end_w[k,i]*S[k]) == SOC[i];
 
 subject to comvex_combination_constraint {k in I, i in H} : 
-    interval_start_w[k][i] + interval_end_w[k][i] == in_interval[k][i];
+    interval_start_w[k,i] + interval_end_w[k,i] == in_interval[k,i];
 
 subject to select_one_interval {i in H} : 
-    sum{I} in_interval[k][i] == 1;
+    sum{k in I} in_interval[k,i] == 1;
 
 
 
