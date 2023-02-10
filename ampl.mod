@@ -99,7 +99,7 @@ var interval_end_w{I,H} >= 0, <= 1 default 0;
 #------------------- Auxiliary variables ----------------
 # compute SOC[i]
 subject to compute_soc {i in H}:
-    SOC[i] = sum{t in 0..i} x[t] / NEC;
+    SOC[i] = EC_init/NEC + sum{t in 0..i} x[t] / NEC;
 ;
 
 # get the absolute value of x[i]
