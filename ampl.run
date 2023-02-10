@@ -1,3 +1,4 @@
+reset;
 model ampl.mod;
 data ampl.dat;
 option solver gurobi;
@@ -10,3 +11,12 @@ display is_charging_or_discharging;
 display x;
 display min_SOC;
 display max_SOC;
+display S;
+display G_c;
+display EC_init/NEC;
+display in_interval[2,1];
+display interval_start_w[2,1];
+display interval_end_w[2,1];
+display sum{k in 1..Nint} (interval_start_w[k,2] * G_d[k-1] + interval_end_w[k,2] * G_d[k]);
+display profit;
+

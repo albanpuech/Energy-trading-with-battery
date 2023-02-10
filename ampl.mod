@@ -21,18 +21,21 @@ param M := NEC;
 
 # ----------- Charge/ discharge curve discretization -------------
 
-# incremental - number of intervals
-param inc <= 100, >= 0, default 1;
 # number of intervals
-param Nint := 100/inc;
+param Nint >= 1, <= 100 default 4;
+# incremental - number of intervals
+param inc := 1/Nint;
 # interval indices 
-set I ordered := {0..Nint};
+set I ordered := {1..Nint};
+# cut points indices 
+set C ordered := {0..Nint};
 # cut points
-param S{i in I} := i*inc;
+param S{i in C} := i*inc;
 # max negative change in energy capacity (discharge)
-param G_d{I} >= -NEC, <= 0 default -NEC/2;
+param G_d{C} >= -NEC, <= 0 default -NEC/2;
 # max positive change in energy capacity (charge)
-param G_c{I} >=0, <= NEC default NEC/2;
+param G_c{C} >=0, <= NEC default NEC/2;
+
 
 
 
@@ -84,8 +87,8 @@ var is_charging_or_discharging{H} binary;
 # interval indicator
 var in_interval{I,H} binary;
 # convex combination weights
-var interval_start_w{I,H} >=0, <= 1;
-var interval_end_w{I,H} >= 0, <= 1;
+var interval_start_w{I,H} >=0, <= 1 default 1;
+var interval_end_w{I,H} >= 0, <= 1 default 0;
 
 
 
@@ -131,8 +134,13 @@ subject to availability_constraint {i in H}:
 
 
 # ------------------- Find discretization parameters of SOC ------------
-subject to find_weights_for_each_interval {i in H} : 
-    sum{k in 1..Nint} (interval_start_w[k,i]*S[k-1]+ interval_end_w[k,i]*S[k]) == SOC[i];
+subject to find_weights_for_each_interval {i in 1..23} : 
+    sum{k in I} (interval_start_w[k,i]*S[k-1]+ interval_end_w[k,i]*S[k]) == SOC[i-1];
+
+
+subject to find_weights_for_each_interval_0 : 
+    sum{k in I} (interval_start_w[k,0]*S[k-1]+ interval_end_w[k,0]*S[k]) == EC_init/NEC;
+
 
 subject to comvex_combination_constraint {k in I, i in H} : 
     interval_start_w[k,i] + interval_end_w[k,i] == in_interval[k,i];
