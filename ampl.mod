@@ -67,8 +67,6 @@ param fc >=0 default 0;
 # ----------- Decision variables --------------
 # energy "in" per hour
 var x{H} >= -NEC, <= NEC;
-# state of charge
-var SOC{H} >= 0, <=1;
 # absolute value of the energy "in" per hour 
 var abs_x{H} >=0, <= NEC;
 
@@ -97,10 +95,6 @@ var interval_end_w{I,H} >= 0, <= 1 default 0;
 
 
 #------------------- Auxiliary variables ----------------
-# compute SOC[i]
-subject to compute_soc {i in H}:
-    SOC[i] = EC_init/NEC + sum{t in 0..i} x[t] / NEC;
-;
 
 # get the absolute value of x[i]
 subject to abs_x_creation {i in H}:
@@ -129,13 +123,13 @@ subject to charge_or_discharge {i in H} :
 #------------------- Availability constraints ----------------
 # keep SOC within bounds 
 subject to availability_constraint {i in H}:
-    min_SOC[i] <= SOC[i] <= max_SOC[i];
+    min_SOC[i] <= EC_init/NEC + sum{t in 0..i} x[t] / NEC <= max_SOC[i];
 
 
 
 # ------------------- Find discretization parameters of SOC ------------
 subject to find_weights_for_each_interval {i in 1..23} : 
-    sum{k in I} (interval_start_w[k,i]*S[k-1]+ interval_end_w[k,i]*S[k]) == SOC[i-1];
+    sum{k in I} (interval_start_w[k,i]*S[k-1]+ interval_end_w[k,i]*S[k]) == EC_init/NEC + sum{t in 0..i-1} x[t] / NEC;
 
 
 subject to find_weights_for_each_interval_0 : 
