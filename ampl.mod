@@ -153,6 +153,7 @@ subject to energy_increment {i in H}:
 subject to energy_decrease {i in H}:
     sum{k in 1..Nint} (interval_start_w[k,i] * G_d[k-1] + interval_end_w[k,i] * G_d[k]) <= x[i];
 
+
 ############################# OBJECTIVE FUNCTION ##################
 
 maximize profit :
