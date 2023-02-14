@@ -9,7 +9,8 @@ set H ordered := {0..23};
 param NEC >= 0 default 100000;
 # initial energy capacity
 param EC_init >= 0, <= NEC default 0;
-
+# degradation and efficiency coefficient
+param eff >0, <=1 default 0.80;
 
 # ----------- constants -------------
 # eps 
@@ -157,7 +158,11 @@ subject to energy_decrease {i in H}:
 ############################# OBJECTIVE FUNCTION ##################
 
 maximize profit :
-    - sum{i in H} (x[i] * p[i] + fgc[i] * is_charging_or_discharging[i] + vgc[i] * abs_x[i]);
+    - sum{i in H} (
+        (is_charging[i]+is_discharging[i]*eff)*x[i] * p[i] 
+        + (is_charging[i]-is_discharging[i]*eff) * vgc[i] * x[i] 
+        + is_charging_or_discharging[i] * fgc[i]
+        );
 
 
 
