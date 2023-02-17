@@ -10,7 +10,7 @@ param NEC >= 0 default 100000;
 # initial energy capacity
 param EC_init >= 0, <= NEC default 0;
 # degradation and efficiency coefficient
-param eff >0, <=1 default 0.80;
+param eff >0, <=1 default 1.00;
 
 # ----------- constants -------------
 # eps 
@@ -23,7 +23,7 @@ param M := NEC;
 # ----------- Charge/ discharge curve discretization -------------
 
 # number of intervals
-param Nint >= 1, <= 100 default 4;
+param Nint >= 1, <= 100 default 5;
 # incremental - number of intervals
 param inc := 1/Nint;
 # interval indices 

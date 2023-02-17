@@ -18,6 +18,10 @@ display interval_start_w[2,1];
 display interval_end_w[2,1];
 display sum{k in 1..Nint} (interval_start_w[k,2] * G_d[k-1] + interval_end_w[k,2] * G_d[k]);
 display profit;
-for {h in 0..23} {display EC_init/NEC + sum{t in 0..h} x[t] / NEC};
+display EC_init/NEC;
+for {h in 1..23} {display EC_init/NEC + sum{t in 0..h-1} x[t] / NEC};
 display _nvars, _snvars  ;
-
+display x[22];
+display x[23];
+display sum{k in 1..Nint} (interval_start_w[k,23] * G_d[k-1] + interval_end_w[k,23] * G_d[k]);
+display profit;

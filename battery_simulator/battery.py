@@ -2,6 +2,10 @@ import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
+
+
+
+
 def get_SOC_CT_functions(SOC_to_CPL_function, NEC):
     '''
     Approximates SOC -> CT and CT -> SOC functions from the SOC -> CPL function
