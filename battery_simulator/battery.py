@@ -16,7 +16,7 @@ def get_SOC_CT_functions(SOC_to_CPL_function, NEC):
     SOC = [0]
 
     while EC < NEC : # until battery is full
-        EC = EC + 1/3600 * SOC_to_CPL_function(SOC[-1]) # charge the battery for one sec using appropriate CPL
+        EC = EC + 1/3600 * NEC * SOC_to_CPL_function(SOC[-1]) # charge the battery for one sec using appropriate CPL
         CT.append(CT[-1]+1) # update time 
         SOC.append(EC/NEC) # update SOC 
     
@@ -37,7 +37,7 @@ def get_SOC_DT_functions(SOC_to_DPL_function, NEC):
     SOC = [1.]
     # iteratively discharge the battery
     while EC >0 :
-        EC = EC - 1/3600 * SOC_to_DPL_function(SOC[-1])
+        EC = EC - 1/3600 * NEC * SOC_to_DPL_function(SOC[-1])
         DT.append(DT[-1]+1)
         SOC.append(EC/NEC)
     
@@ -49,6 +49,25 @@ def get_SOC_DT_functions(SOC_to_DPL_function, NEC):
 
     
 
+def get_max_energy_change(bat,S,) :
+    capacity_change_charge = np.zeros(len(S))
+    capacity_change_discharge = np.zeros(len(S))
+
+    for i,SOC_init in enumerate(S) :
+        SOC = SOC_init
+        for t in range(3600) :
+            SOC = min(1,SOC + 1/3600  * bat.SOC_to_CPL_function(SOC))
+        capacity_change_charge[i] = (SOC-SOC_init) 
+
+        
+    for i,SOC_init in enumerate(S) :
+        SOC = SOC_init
+        for t in range(3600) :
+            SOC = max(0,SOC- 1/3600 * bat.SOC_to_DPL_function(SOC))
+        capacity_change_discharge[i] =  (SOC-SOC_init) 
+
+        
+    return capacity_change_charge, capacity_change_discharge
 
 
 class Battery():
