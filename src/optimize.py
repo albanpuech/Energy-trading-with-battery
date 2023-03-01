@@ -3,23 +3,16 @@ import numpy as np
 from amplpy import AMPL, modules
 
 
-def get_schedule(bat, df, forecasted=True, frame_size=14, update_period=1,start=None):
+def get_schedule(bat, df, forecasted=True, frame_size=14, update_period=1, start=None):
     """
-    Returns a copy of the initial price data frame, with three additional columns :
-    - schedule: Change in EC during the hour
-    - capacity: Capacity at the end of the hour
-    - SOC: SOC at the end of the hour 
+    Computed optimal schedule for each day of the  
+    """
 
-    The schedule is optimized **for each day of the dataframe, considered separately.** 
-    """
-    
-    if start == None and forecasted : 
+    if start == None and forecasted:
         start = frame_size
-    
-    if start == None  :
+
+    if start == None:
         start = 0
-    
-        
 
     bat.reset()
     n_hours = len(df)
@@ -47,8 +40,8 @@ def get_schedule(bat, df, forecasted=True, frame_size=14, update_period=1,start=
         if forecasted and (i % update_period == 0):
             price_forecast = df.iloc[(day-frame_size)*24:day*24, :].groupby(
                 df.timestamp.dt.hour).price_euros_wh.mean().to_numpy()
-        
-        if not forecasted :
+
+        if not forecasted:
             price_forecast = df.iloc[day_indices].price_euros_wh.to_numpy()
 
         n_cycles_list[day_indices] = bat.n_cycles
