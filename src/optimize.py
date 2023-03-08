@@ -3,19 +3,23 @@ import numpy as np
 from amplpy import AMPL, modules
 
 
-def get_schedule(bat, df, forecasted=True, frame_size=14, update_period=1, start=None):
+def run_simulation(bat, df, forecasted=True, frame_size=14, update_period=1, start=None):
     """
-    Computed optimal schedule for each day of the  
+    Run a simulation starting from the start-th day of the dataframe.
+    For every day of the simulation, a schedule is generated (either based on true prices or prediction) and different 
+    metrics are recorded.
+    We return a dataframe containing the results of the simulation
     """
+    n_hours = len(df)
 
+    # if no start day has been specified, start from the first day for which a prediction is available
     if start == None and forecasted:
         start = frame_size
 
     if start == None:
         start = 0
 
-    bat.reset()
-    n_hours = len(df)
+    bat.reset()  # start with a new battery, and get the max SOC change when charging and discharging
     G_c, G_d = bat.max_SOC_change_charge, bat.min_SOC_change_discharge
 
     n_cycles_list = np.zeros(n_hours)
@@ -37,59 +41,87 @@ def get_schedule(bat, df, forecasted=True, frame_size=14, update_period=1, start
 
         day_indices = slice(day*24, (day+1)*24)
 
+        # if using forecasted prices, get new forecast evert update_period iterations :
         if forecasted and (i % update_period == 0):
-            price_forecast = df.iloc[(day-frame_size)*24:day*24, :].groupby(
+            prices = df.iloc[(day-frame_size)*24:day*24, :].groupby(
                 df.timestamp.dt.hour).price_euros_wh.mean().to_numpy()
 
+        # Otherwise, use the true prices for the current day
         if not forecasted:
-            price_forecast = df.iloc[day_indices].price_euros_wh.to_numpy()
+            prices = df.iloc[day_indices].price_euros_wh.to_numpy()
 
+        # get the variable grid cost
+        vgc = df.vgc.iloc[day*24:(day+1)*24].to_numpy()
+
+        # get the fixed grid cost
+        fgc = df.fgc.iloc[day*24:(day+1)*24].to_numpy()
+
+        # store battery state
         n_cycles_list[day_indices] = bat.n_cycles
         eff_list[day_indices] = bat.eff
         NEC_list[day_indices] = bat.NEC
-        price_forecast_list[day_indices] = price_forecast
+        price_forecast_list[day_indices] = prices
 
-        ampl = AMPL()  # instantiate AMPL object
-        ampl.read("ampl/ampl.mod")
+        # get optimized schedule
+        schedule[day_indices] = get_daily_schedule(
+            prices, vgc, fgc, bat, G_c, G_d)
 
-        vgc = df.vgc.iloc[day*24:(day+1)*24].to_numpy()
-        ampl.get_parameter("vgc").set_values(vgc)
-
-        ampl.get_parameter("p").set_values(price_forecast)
-
-        ampl.get_parameter("eff").set_values([bat.eff])
-        ampl.get_parameter("Nint").set_values([bat.Nint])
-        ampl.get_parameter("max_SOC").set_values([1]*23 + [0])
-        ampl.get_parameter("G_c").set_values(np.array(G_c)*bat.NEC)
-        ampl.get_parameter("G_d").set_values(np.array(G_d)*bat.NEC)
-        ampl.get_parameter("NEC").set_values([bat.NEC])
-
-        ampl.option["solver"] = "gurobi"
-        ampl.solve()
-        daily_schedule = ampl.get_variable('x').get_values().to_pandas()[
-            "x.val"].to_numpy()
-        ampl.reset()
-
-        bat.n_cycles += abs(daily_schedule).sum()/(2*bat.init_NEC)
-
-        schedule[day_indices] = daily_schedule
-
+    ## store simulation results 
     df = df.assign(n_cycles=n_cycles_list,
-                   eff=eff_list,
+                   eff=eff_list, 
                    NEC=NEC_list,
                    price_forecast=price_forecast_list,
                    schedule=schedule,
                    capacity=np.hstack(
                        (np.array([0]), np.cumsum(schedule)[:-1])),
                    SOC=lambda x: 100 * x.capacity/x.NEC,
-                   charge_energy=lambda x: x.schedule.mask(x.schedule < 0, 0),
+                   charge_energy=lambda x: x.schedule.mask(x.schedule < 0, 0), ## energy delivered to the battery
                    discharge_energy=lambda x: -
-                   x.schedule.mask(x.schedule > 0, 0) * x.eff,
-                   electricity_revenue=lambda x: x.price_euros_wh *
+                   x.schedule.mask(x.schedule > 0, 0) * x.eff, ## energy obtained from the battery (taking into account the discharge efficiency)
+                   electricity_revenue=lambda x: x.price_euros_wh * ## net revenue from electricity trading (before grid costs)
                    (x.discharge_energy - x.charge_energy),
-                   grid_cost=lambda x: x.vgc *
-                   (x.discharge_energy - x.charge_energy),
-                   hourly_profit=lambda x: x.electricity_revenue - x.grid_cost
+                   grid_cost=lambda x: x.vgc * ## grid costs
+                   (x.discharge_energy - x.charge_energy) +
+                   x.fgc * (abs(x.schedule) > 10**-5),
+                   hourly_profit=lambda x: x.electricity_revenue - x.grid_cost ## profits
                    )
 
     return df.iloc[start*24:]
+
+
+def get_daily_schedule(prices, vgc, fgc, bat, G_c, G_d):
+    """
+    Obtain schedule given the battery model, prices, vgc and fgc.
+    """
+
+    ## the arrays have to contain the data for the 24 hours of the day
+    if not (len(prices == 24) and len(vgc == 24) and len(fgc == 24)) :
+        raise Exception(
+            "The arrays should contain the data for a full day (24 hours)")
+
+    ## instantiate AMPL object and load the model
+    ampl = AMPL()  
+    ampl.read("ampl/ampl.mod")  
+
+    ## set parameters 
+    ampl.get_parameter("vgc").set_values(vgc)
+    ampl.get_parameter("fgc").set_values(fgc)
+    ampl.get_parameter("p").set_values(prices)
+    ampl.get_parameter("eff").set_values([bat.eff])
+    ampl.get_parameter("Nint").set_values([bat.Nint])
+    ampl.get_parameter("max_SOC").set_values([1]*23 + [0])
+    ampl.get_parameter("G_c").set_values(np.array(G_c)*bat.NEC)
+    ampl.get_parameter("G_d").set_values(np.array(G_d)*bat.NEC)
+    ampl.get_parameter("NEC").set_values([bat.NEC])
+
+    ## solve and get optimization solution
+    ampl.option["solver"] = "gurobi"
+    ampl.solve()
+    daily_schedule = ampl.get_variable('x').get_values().to_pandas()[
+        "x.val"].to_numpy()
+    ampl.reset()
+
+    ## update battery state
+    bat.n_cycles += abs(daily_schedule).sum()/(2*bat.init_NEC)
+
+    return daily_schedule

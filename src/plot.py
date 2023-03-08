@@ -19,10 +19,10 @@ def display_profit(df_optim):
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-    fig.add_trace(go.Scatter(x=df_optim.timestamp, y=df_optim.price_euros_wh*10**6, name='Price (EUR/MWh)', line={"shape": "hv"}, showlegend=True),
+    fig.add_trace(go.Scatter(x=df_optim.timestamp, y=df_optim.price_euros_wh*10**6, name='Price (EUR/MWh)', line={"shape": "hv"}, showlegend=False),
                   secondary_y=False)
 
-    fig.add_trace(go.Bar(x=days, y=daily_profit, name="Daily profit (EUR)", offset=2, showlegend=True, opacity=0.5),
+    fig.add_trace(go.Bar(x=days, y=daily_profit, name="Daily profit (EUR)", offset=2, showlegend=False, opacity=0.5),
                   secondary_y=True)
 
     fig.update_layout(
@@ -31,8 +31,8 @@ def display_profit(df_optim):
     )
 
     fig.update_xaxes(title_text="Hour")
-    fig.update_yaxes(title_text="Price (EUR/MWh)", secondary_y=False)
-    fig.update_yaxes(title_text="Daily profit (EUR)", secondary_y=True)
+    fig.update_yaxes(title_text="Price (EUR/MWh)", secondary_y=False,title_font_color="blue")
+    fig.update_yaxes(title_text="Daily profit (EUR)", secondary_y=True,title_font_color="red")
 
     fig.update_layout(bargap=0.)
     fig.write_html("out/profit.html")
