@@ -1,23 +1,37 @@
 import pandas as pd
 import numpy as np
 from amplpy import AMPL, modules
+import datetime 
 
+import datetime 
+import pandas as pd
+import numpy as np
+from amplpy import AMPL, modules
+import datetime 
 
-def run_simulation(bat, df, forecasted=True, frame_size=14, update_period=1, start=None):
+def run_simulation(bat, df, start, end, forecasted=True, frame_size=14, update_period=1):
     """
     Run a simulation starting from the start-th day of the dataframe.
     For every day of the simulation, a schedule is generated (either based on true prices or prediction) and different 
     metrics are recorded.
     We return a dataframe containing the results of the simulation
     """
-    n_hours = len(df)
+    
+    try :
+        end = datetime.datetime.strptime(end, '%Y-%m-%d %H:%M:%S') - datetime.timedelta(hours=1)
+        start_index = df.index.get_loc(df.index[df.timestamp==start][0]) 
+        end_index = df.index.get_loc(df.index[df.timestamp==end][0])
+    except : raise ValueError("The dataframe does not contain all the data between the start and end dates")
+    start_df = start_index - 24 * frame_size if forecasted else start_index
+    if  start_df < 0 : raise ValueError("The dataframe does not contain enough data for the price prediction relying on the {} last days to be computed".format(frame_size))
+    
+    df = df.iloc[start_df: end_index+1, :]
+    n_hours = (end_index-start_df) + 1
+    
+    if  n_hours% 24 != 0:
+        raise Exception(
+            "The dataframe should contain only full days (24 hours)")
 
-    # if no start day has been specified, start from the first day for which a prediction is available
-    if start == None and forecasted:
-        start = frame_size
-
-    if start == None:
-        start = 0
 
     bat.reset()  # start with a new battery, and get the max SOC change when charging and discharging
     G_c, G_d = bat.max_SOC_change_charge, bat.min_SOC_change_discharge
@@ -28,16 +42,12 @@ def run_simulation(bat, df, forecasted=True, frame_size=14, update_period=1, sta
     price_forecast_list = np.zeros(n_hours)
     schedule = np.zeros(n_hours)
 
-    modules.load()  # load all AMPL modules
-    ampl = AMPL()  # instantiate AMPL object
-    ampl.read("ampl/ampl.mod")
 
-    if n_hours % 24 != 0:
-        raise Exception(
-            "The dataframe should contain only full days (24 hours)")
+
+
 
     # optimization done for each day :
-    for i, day in enumerate(range(start, n_hours//24)):
+    for i, day in enumerate(range((frame_size if forecasted else 0), n_hours//24)):
 
         day_indices = slice(day*24, (day+1)*24)
 
@@ -86,7 +96,7 @@ def run_simulation(bat, df, forecasted=True, frame_size=14, update_period=1, sta
                    hourly_profit=lambda x: x.electricity_revenue - x.grid_cost ## profits
                    )
 
-    return df.iloc[start*24:]
+    return df.iloc[(frame_size if forecasted else 0) * 24:]
 
 
 def get_daily_schedule(prices, vgc, fgc, bat, G_c, G_d):
@@ -100,6 +110,7 @@ def get_daily_schedule(prices, vgc, fgc, bat, G_c, G_d):
             "The arrays should contain the data for a full day (24 hours)")
 
     ## instantiate AMPL object and load the model
+    modules.load()  # load all AMPL modules
     ampl = AMPL()  
     ampl.read("ampl/ampl.mod")  
 

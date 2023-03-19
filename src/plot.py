@@ -39,18 +39,20 @@ def display_profit(df_optim):
     fig.show()
 
 
-def display_schedule(df_optim, start=None, end=None):
+def display_schedule(df_to_show, start=None, end=None):
     """
     Displays charge schedule between start datetime and end datetime 
     """
 
-    if start == None:
-        start = df_optim.timestamp.iloc[0]
-    if end == None:
-        end = df_optim.timestamp.iloc[-1]
+    mask = None
 
-    mask = (df_optim.timestamp < end) & (df_optim.timestamp >= start)
-    df_to_show = df_optim[mask]
+    if start : 
+        df_to_show = df_to_show[(df_to_show.timestamp >= start)]
+  
+    if end : 
+        df_to_show = df_to_show[(df_to_show.timestamp < end)]
+
+    
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
