@@ -77,7 +77,7 @@ section.lead_smaller{
 
 <!-- _class: lead -->
 
-# A Stochastic Model Predictive Control Algorithm For Energy Arbitrage On the Day-Ahead Market Under Operational Constraints
+# Optimal Charge Scheduling For Energy Arbitrage On the Day-Ahead Market Under Operational Constraints
 
 ### Alban Puech and Gorazd Dimitrov
 
@@ -127,7 +127,7 @@ section.lead_smaller{
 - Buying and selling orders are binding and need to be placed before market closure
 - Prices are unknown before market closure
 - Need to plan in advance the buying and selling orders = **need for a charging schedule**
-- Unknown prices = **Stochastic optimization problem**
+- Unknown prices 
 
 ---
 
@@ -167,7 +167,7 @@ Many linear programming approached [4,5,6,7,8], but :
 # Contributions 
 
 - A **battery model** with variable charging rates, discharge efficiency decrease, and capacity fading
-- A **stochastic MPC solution** to the profit maximization task that can be deployed using Linear Programming solvers
+- An **MPC solution** to the profit maximization task that can be deployed using Linear Programming solvers
 - A **Python library** to output daily optimal schedules for custom data using built-in price forecasting and that allows running simulations on historical prices
 - A **quantitative comparison** of the performances of our predictive optimization model with a baseline that outputs the optimal schedules, for different key hyperparameters and different European countries.
 - A **discussion** of the impact of capacity fading, discharge efficiency decrease, and the charging rates on the profit obtained via arbitrage
@@ -364,11 +364,11 @@ $$
 ---
 <!-- _class: lead -->
 
-# Stochastic MPC formulation
+# MPC formulation
 
 ---
 
-## We define a stochastic MPC task solved using LP :
+## We define an MPC problem solved using LP :
 
 - **Decision variable** : $S_d = (\Delta E_d(0), \Delta E_d(1), \dots, \Delta E_d(23))$
 
@@ -385,7 +385,7 @@ $$
 <!-- _class: recap -->
 
 
-# Stochastic MPC formulation
+# MPC formulation
 $$
 \begin{align*}
 
@@ -635,7 +635,7 @@ Each simulation took ~2 minutes (Gurobi solver, AMD Ryzen 5 4600Hz, 16.0 GB RAM)
 
 ## Conclusion
 
-- We proposed a **Stochastic MPC algorithm** for energy arbitrage profit maximization
+- We proposed an **MPC algorithm** for energy arbitrage profit maximization
 
 - Introduced a **battery model** with capacity fading, efficiency decrease, variable charging rates
 
