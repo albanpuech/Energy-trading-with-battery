@@ -14,7 +14,7 @@ param eff >0, <=1 default 1.00;
 
 # ----------- constants -------------
 # eps 
-param eps := 0.00000001;
+param eps := 0.01;
 # big M to compute is_charging and is_discharging
 param M := NEC;
 
@@ -68,15 +68,11 @@ param fc >=0 default 0;
 # ----------- Decision variables --------------
 # energy "in" per hour
 var x{H} >= -NEC, <= NEC;
-# absolute value of the energy "in" per hour 
-var abs_x{H} >=0, <= NEC;
+
+
 
 
 # ----------- operation booleans -------------
-# boolean indicating if we are buying = charging (1), or holding (0)
-var is_charging{H} binary;
-# boolean indicating if we are selling = discharging (1), or holding (0)
-var is_discharging{H} binary;
 # boolean indicating if we are charging or discharging (1), or holding (0)
 var is_charging_or_discharging{H} binary; 
 
@@ -89,6 +85,12 @@ var in_interval{I,H} binary;
 var interval_start_w{I,H} >=0, <= 1 default 1;
 var interval_end_w{I,H} >= 0, <= 1 default 0;
 
+# ----------- positive and negative parts -------------
+
+var x_p{H} >=0, <=NEC;
+var x_n{H} >=0, <=NEC;
+var y{H} binary;
+
 
 
 ############################# CONSTRAINTS ##################
@@ -96,28 +98,23 @@ var interval_end_w{I,H} >= 0, <= 1 default 0;
 
 
 #------------------- Auxiliary variables ----------------
+subject to x_decomposition {i in H} :
+    x[i] == x_p[i] - x_n[i];
 
-# get the absolute value of x[i]
-subject to abs_x_creation {i in H}:
-    abs_x[i] = is_charging[i] * x[i] - is_discharging[i] * x[i]
-;
+subject to positive_part {i in H} :
+    x_p[i] <= M * y[i];
+
+subject to negative_part {i in H} :
+    x_n[i] <= M * (1-y[i]);
+
 
 
 # ---------- charging/discharging or no action on the battery -------
-subject to charging_down {i in H} : 
-    x[i] <= eps + M*is_charging[i];
+subject to is_charging_or_discharging_right {i in H} : 
+    x_n[i] + x_p[i] >= eps*is_charging_or_discharging[i];
 
-subject to charging_up {i in H} : 
-    x[i] >= eps - M*(1-is_charging[i]);
-
-subject to discharging_down {i in H} : 
-    - x[i] <= eps + M*is_discharging[i];
-
-subject to discharging_up {i in H} : 
-    - x[i] >= eps - M*(1-is_discharging[i]);
-
-subject to charge_or_discharge {i in H} : 
-    is_charging_or_discharging[i] == is_charging[i] + is_discharging[i];
+subject to is_charging_or_discharging_left {i in H} : 
+    x_n[i] + x_p[i] <= M * is_charging_or_discharging[i];
 
 
 
@@ -159,8 +156,8 @@ subject to energy_decrease {i in H}:
 
 maximize profit :
     - sum{i in H} (
-        (is_charging[i]+is_discharging[i]*eff)*x[i] * p[i] 
-        + (is_charging[i]-is_discharging[i]*eff) * vgc[i] * x[i] 
+        (x_p[i]-x_n[i]*eff) * p[i] 
+        + (x_p[i]+x_n[i]*eff) * vgc[i] 
         + is_charging_or_discharging[i] * fgc[i]
         );
 

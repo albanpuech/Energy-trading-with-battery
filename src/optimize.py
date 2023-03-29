@@ -9,7 +9,7 @@ import numpy as np
 from amplpy import AMPL, modules
 import datetime 
 
-def run_simulation(bat, df, start, end, forecasted=True, frame_size=14, update_period=1):
+def run_simulation(bat, df, start, end, forecasted=True, frame_size=14, update_period=1, forecasting_model = None ):
     """
     Run a simulation starting from the start-th day of the dataframe.
     For every day of the simulation, a schedule is generated (either based on true prices or prediction) and different 
@@ -53,8 +53,11 @@ def run_simulation(bat, df, start, end, forecasted=True, frame_size=14, update_p
 
         # if using forecasted prices, get new forecast evert update_period iterations :
         if forecasted and (i % update_period == 0):
-            prices = df.iloc[(day-frame_size)*24:day*24, :].groupby(
+            if forecasting_model :
+                prices = forecasting_model(df.iloc[(day-frame_size)*24:day*24, :][0])
+            else : prices = df.iloc[(day-frame_size)*24:day*24, :].groupby(
                 df.timestamp.dt.hour).price_euros_wh.mean().to_numpy()
+            
 
         # Otherwise, use the true prices for the current day
         if not forecasted:
@@ -91,8 +94,11 @@ def run_simulation(bat, df, start, end, forecasted=True, frame_size=14, update_p
                    electricity_revenue=lambda x: x.price_euros_wh * ## net revenue from electricity trading (before grid costs)
                    (x.discharge_energy - x.charge_energy),
                    grid_cost=lambda x: x.vgc * ## grid costs
-                   (x.discharge_energy - x.charge_energy) +
+                   (x.discharge_energy + x.charge_energy) +
                    x.fgc * (abs(x.schedule) > 10**-5),
+                    variable_grid_cost=lambda x: x.vgc * ## grid costs
+                   (x.discharge_energy + x.charge_energy),
+                   fixed_grid_cost = lambda x: x.fgc * (abs(x.schedule) > 10**-5),
                    hourly_profit=lambda x: x.electricity_revenue - x.grid_cost ## profits
                    )
 
@@ -130,7 +136,14 @@ def get_daily_schedule(prices, vgc, fgc, bat, G_c, G_d):
     ampl.solve()
     daily_schedule = ampl.get_variable('x').get_values().to_pandas()[
         "x.val"].to_numpy()
-    ampl.reset()
+    
+
+    # print(ampl.get_variable('x').get_values().to_pandas()[
+    #     "x.val"].to_numpy())
+    
+    # print(ampl.get_variable('is_charging_or_discharging').get_values().to_pandas()[
+    # "is_charging_or_discharging.val"].to_numpy())
+    # ampl.reset()
 
     ## update battery state
     bat.n_cycles += abs(daily_schedule).sum()/(2*bat.init_NEC)
