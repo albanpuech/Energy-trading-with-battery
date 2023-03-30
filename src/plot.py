@@ -3,9 +3,11 @@ import numpy as np
 import datetime
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import csv
+from os import read
 
 
-def display_profit(df_optim):
+def display_profit(df_optim, name =""):
     """
     Displays daily profits 
     """
@@ -35,11 +37,11 @@ def display_profit(df_optim):
     fig.update_yaxes(title_text="Daily profit (EUR)", secondary_y=True,title_font_color="red")
 
     fig.update_layout(bargap=0.)
-    fig.write_html("out/profit.html")
+    fig.write_html("out/profit_{}.html".format(name))
     fig.show()
 
 
-def display_schedule(df_to_show, start=None, end=None):
+def display_schedule(df_to_show, name = "", start=None, end=None):
     """
     Displays charge schedule between start datetime and end datetime 
     """
@@ -143,4 +145,20 @@ def display_schedule(df_to_show, start=None, end=None):
     fig.update_yaxes(title_text="SOC (%)", secondary_y=True)
 
     fig.show()
-    fig.write_html("out/schedule.html")
+    fig.write_html("out/schedule_{}.html".format(name))
+
+
+
+
+def get_stats(df_pred, df_optim, name='') :
+    stats = {'prediction_mae':10**6 * abs(df_pred.price_euros_wh-df_pred.price_forecast).mean(),
+                 'relative_diff_profits':-100*(df_optim.hourly_profit.sum() - df_pred.hourly_profit.sum())/df_optim.hourly_profit.sum(),
+                 'daily_profit_avg_pred':24*df_pred.hourly_profit.sum()/len(df_pred),
+                 'avg_daily_profit_optim': 24*df_optim.hourly_profit.sum()/len(df_optim),
+                 'n_cycles_pred':df_pred.n_cycles.iloc[-1],
+                 "n_cycles_optim":df_optim.n_cycles.iloc[-1]}
+    
+    with open("out/stats_{}.csv".format(name),"w") as file:
+        for value,item in stats.items():
+            file.write(str(value)+","+str(item)+"\n")
+            print(value,item)
