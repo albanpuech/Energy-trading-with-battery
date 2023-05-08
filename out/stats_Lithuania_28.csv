@@ -1,0 +1,6 @@
+prediction_mae,81.35239306099152
+relative_diff_profits,-31.29244412130515
+daily_profit_avg_pred,172.05864171988122
+avg_daily_profit_optim,250.42171784374872
+n_cycles_pred,684.3078035595723
+n_cycles_optim,772.5651850613883

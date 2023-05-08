@@ -111,7 +111,7 @@ def get_daily_schedule(prices, vgc, fgc, bat, G_c, G_d):
     """
 
     ## the arrays have to contain the data for the 24 hours of the day
-    if not (len(prices == 24) and len(vgc == 24) and len(fgc == 24)) :
+    if not (len(prices == 24) and len(vgc) == 24 and len(fgc) == 24) :
         raise Exception(
             "The arrays should contain the data for a full day (24 hours)")
 
